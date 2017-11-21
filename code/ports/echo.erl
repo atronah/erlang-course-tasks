@@ -62,6 +62,7 @@ handle_info(Msg, State) ->
             Result = receive
                           {Pid, {data, Data}} -> Data
                       end,
+            io:format("Message: ~p", [Data]),
             {reply, Result, {Pid, Tail}};
         {Command, _Data} ->
             io:format("Usupported command: ~p", [Command]),
