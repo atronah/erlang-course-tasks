@@ -25,7 +25,7 @@ echo(Server, String) ->
     gen_server:call(Server, {echo, String}).
 
 
-init([]) ->
+init([])
     Port = open_port(
         {spawn, "python echo.py"},
         [
@@ -34,27 +34,36 @@ init([]) ->
             binary
         ]
     ),
-    {ok, Port}.
+    {ok, {Port, []}}.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 terminate(_Reason, State) ->
-    port_close(State),
+    {Pid, _Queue} = State,
+    port_close(Pid),
     ok.
 
 
-handle_call({echo, Str}, _From, State) ->
-    port_command(State, Str),
-    Result = receive
-        {State, {data, Data}} ->
-            Data
-    end,
-    {reply, Result, State}.
+handle_call({Command, Data}, _From, State) ->
+    {Pid, Queue} = State,
+    {noreply, {Pid, [{Command, Data} | Queue]}}
+   
 
 handle_cast(_, State) ->
     {noreply, State}.
 
+
 handle_info(Msg, State) ->
-    io:format("Message: ~p", [Msg]),
-    {noreply, State}.
+    {Pid, [Head | Tail]} = State,
+    case Head of
+        {echo, Str} -> 
+            port_command(State, Str),
+            Result = receive
+                          {Pid, {data, Data}} -> Data
+                      end,
+            {reply, Result, {Pid, Tail}};
+        {Command, _Data} ->
+            io:format("Usupported command: ~p", [Command]),
+            {noreply, {Pid, Tail}}
+     end.
