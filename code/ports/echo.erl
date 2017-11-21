@@ -27,7 +27,7 @@ echo(Server, String) ->
 
 init([])
     Port = open_port(
-        {spawn, "python echo.py"},
+        {spawn, "python3 echo.py"},
         [
             use_stdio,
             stream,
