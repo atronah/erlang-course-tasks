@@ -11,7 +11,7 @@ def main():
             try:
                 print('Evaluating result:', eval(message), flush=True)
             except:
-                print('I don\'t understand:', message, flush=True)
+                print('I dont understand:', message, flush=True)
 
 
 if __name__ == '__main__':

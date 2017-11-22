@@ -21,12 +21,12 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
-echo(Server, String) ->
-    gen_server:call(Server, {echo, String}).
+echo(Server, Text) ->
+    gen_server:call(Server, {echo, Text}).
 
 
-init([])
-    Port = open_port(
+init([]) ->
+    PyPort = open_port(
         {spawn, "python3 echo.py"},
         [
             use_stdio,
@@ -34,37 +34,33 @@ init([])
             binary
         ]
     ),
-    {ok, {Port, []}}.
+    {ok, {PyPort, []}}.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 terminate(_Reason, State) ->
-    {Pid, _Queue} = State,
-    port_close(Pid),
+    {PyPort, _Waiters} = State,
+    port_close(PyPort),
     ok.
 
 
-handle_call({Command, Data}, _From, State) ->
-    {Pid, Queue} = State,
-    {noreply, {Pid, [{Command, Data} | Queue]}}
+handle_call({echo, Text}, From, State) when is_list(Text) ->
+    handle_call({echo, list_to_binary(Text)}, From, State);
+
+handle_call({echo, Text}, From, State) ->
+    {PyPort, Waiters} = State,
+    port_command(PyPort, erlang:iolist_to_binary([Text, "\n"])),
+    {noreply, {PyPort, [From | Waiters]}}.
    
 
 handle_cast(_, State) ->
     {noreply, State}.
 
 
+handle_info({PyPort, {data, Data}}, {PyPort, [LastWaiter | OtherWaiters]}) ->
+    gen_server:reply(LastWaiter, erlang:binary_to_list(Data)),
+    {noreply, {PyPort, OtherWaiters}};
 handle_info(Msg, State) ->
-    {Pid, [Head | Tail]} = State,
-    case Head of
-        {echo, Str} -> 
-            port_command(State, Str),
-            Result = receive
-                          {Pid, {data, Data}} -> Data
-                      end,
-            io:format("Message: ~p", [Data]),
-            {reply, Result, {Pid, Tail}};
-        {Command, _Data} ->
-            io:format("Usupported command: ~p", [Command]),
-            {noreply, {Pid, Tail}}
-     end.
+    io:format("Message: ~p~n", [Msg]),
+    {noreply, State}.
