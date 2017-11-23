@@ -32,7 +32,7 @@ fire(Server, Event) ->
     gen_server:call(Server, {fire, Event}).
     
 
-init([])
+init([]) ->
     {ok, []}.
 
 
@@ -40,7 +40,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 
-terminate(_Reason, State) ->
+terminate(_Reason, _State) ->
     ok.
 
 
@@ -52,7 +52,7 @@ handle_call({fire, Event}, _From, State) ->
     {reply, on_fire(Event, State), State}.
    
 
-on_fire(Event, []) ->
+on_fire(_Event, []) ->
     ok;
     
 on_fire(Event, [Module | Tail]) ->
@@ -65,5 +65,5 @@ handle_cast(_, State) ->
     {noreply, State}.
 
 
-handle_info(Msg, State) ->
+handle_info(_Msg, State) ->
     {noreply, State}.
